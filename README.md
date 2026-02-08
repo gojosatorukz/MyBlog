@@ -1,9 +1,5 @@
 # 🚀 Secure Full-Stack Blog Platform
 
-![Status](https://img.shields.io/badge/Status-Completed-success?style=for-the-badge)
-![Tech](https://img.shields.io/badge/Stack-MERN_Stack-blue?style=for-the-badge)
-![Security](https://img.shields.io/badge/Security-OWASP_Standards-red?style=for-the-badge)
-
 A production-ready blogging platform built with **Node.js, Express, MongoDB, and EJS**.
 This project features a secure authentication system, role-based access control (RBAC), real-time social interactions, and a modern "Glassmorphism" UI with Dark Mode support.
 
