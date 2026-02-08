@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+    
+    <title>Blog Project</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-body: #f3f4f6;
+            --text-main: #111827;
+            --text-muted: #6b7280;
+            --card-bg: #ffffff;
+            --navbar-bg: #ffffff;
+            --brand-color: #111827;
+            --accent-color: #6366f1;
+            --border-color: #e5e7eb;
+            --input-bg: #f9fafb;
+            --shadow-nav: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        body.dark-mode {
+            --bg-body: #0f172a; 
+            --text-main: #f8fafc; 
+            --text-muted: #94a3b8;
+            --card-bg: #1e293b; 
+            --navbar-bg: #0f172a;
+            --brand-color: #ffffff;
+            --accent-color: #818cf8;
+            --border-color: #334155;
+            --input-bg: #0f172a; 
+            --shadow-nav: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        .navbar {
+            background-color: var(--navbar-bg) !important;
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: var(--shadow-nav);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            padding: 16px 0;
+        }
+        .navbar-brand {
+            font-weight: 800;
+            font-size: 1.6rem;
+            color: var(--brand-color) !important;
+            letter-spacing: -0.5px;
+        }
+        .brand-dot { color: var(--accent-color); }
+        .nav-link {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-muted) !important;
+            margin: 0 5px;
+            transition: 0.2s;
+        }
+        .nav-link:hover, .nav-link.active { color: var(--text-main) !important; }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            color: var(--text-main);
+        }
+        
+        .hover-shadow:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.2);
+            border-color: var(--accent-color);
+        }
+
+        .form-control, .form-select {
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            border-radius: 12px;
+            padding: 10px 16px;
+        }
+        .form-control:focus {
+            background-color: var(--input-bg);
+            color: var(--text-main);
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+        }
+        .form-control::placeholder { color: var(--text-muted); }
+
+        .btn-primary {
+            background-color: var(--brand-color);
+            color: var(--bg-body);
+            border: none;
+            font-weight: 600;
+            padding: 8px 24px;
+        }
+        body.dark-mode .btn-primary { background-color: #6366f1; color: white; }
+        .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        body.dark-mode .bg-light, 
+        body.dark-mode .bg-white {
+            background-color: #1e293b !important; 
+            color: #ffffff !important;
+        }
+
+        body.dark-mode .text-dark {
+            color: #ffffff !important;
+        }
+        
+        body.dark-mode h1, body.dark-mode h2, body.dark-mode h3, body.dark-mode h4, body.dark-mode h5 {
+            color: #ffffff !important;
+        }
+
+        body.dark-mode .btn-outline-dark {
+            color: #ffffff;
+            border-color: #475569;
+        }
+        body.dark-mode .btn-outline-dark:hover {
+            background-color: #ffffff;
+            color: #000000;
+        }
+
+        body.dark-mode .modal-content {
+            background-color: #1e293b;
+            color: white;
+            border: 1px solid #334155;
+        }
+        body.dark-mode .modal-header, body.dark-mode .modal-footer {
+            border-color: #334155;
+        }
+        body.dark-mode .btn-close {
+            filter: invert(1) grayscale(100%) brightness(200%);
+        }
+
+        body.dark-mode a {
+            color: #818cf8; 
+        }
+        body.dark-mode a.text-dark {
+            color: #ffffff !important;
+        }
+        .text-muted { color: var(--text-muted) !important; }
+        .rounded-circle { border: 2px solid var(--border-color); }
+        #themeToggle { border: 1px solid var(--border-color); color: var(--text-main); }
+        #themeToggle:hover { background-color: var(--input-bg); }
+
+    </style>
+
+    <script>
+        (function() {
+            const token = localStorage.getItem('token');
+            const path = window.location.pathname;
+            
+            const publicPages = ['/login', '/register', '/'];
+
+            if (!token && !publicPages.includes(path) && !path.startsWith('/post/')) {
+                window.location.href = '/login';
+            }
+
+            if (token && (path === '/login' || path === '/register')) {
+                window.location.href = '/'; 
+            }
+
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark-mode');
+                document.addEventListener('DOMContentLoaded', () => document.body.classList.add('dark-mode'));
+            }
+
+            if (token) {
+            }
+        })();
+    </script>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="/">My Blog<span class="brand-dot">.</span></a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon" style="filter: invert(0.5);"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                
+                <form class="d-flex mx-auto position-relative mt-3 mt-lg-0" action="/" method="GET" style="width: 100%; max-width: 400px;">
+                    <input class="form-control pe-5" type="search" name="search" id="searchInput" placeholder="Search topics..." aria-label="Search">
+                    <button class="btn position-absolute end-0 top-0 mt-1 me-2 text-muted border-0" type="submit" style="background: transparent;">
+                        🔍
+                    </button>
+                </form>
+
+                <ul class="navbar-nav ms-auto align-items-center gap-3 mt-3 mt-lg-0">
+                    
+                    <li class="nav-item">
+                        <button id="themeToggle" class="btn rounded-circle d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                            🌙
+                        </button>
+                    </li>
+
+                    <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
+                    
+                    <li class="nav-item d-none" id="createPostLink">
+                        <a class="btn btn-primary rounded-pill px-4" href="/create-post">New Post</a>
+                    </li>
+
+                    <li class="nav-item" id="loginLink"><a class="nav-link" href="/login">Log in</a></li>
+                    <li class="nav-item" id="registerLink">
+                        <a class="btn btn-primary rounded-pill px-4" href="/register">Sign up</a>
+                    </li>
+                    
+                    <li class="nav-item d-none" id="profileLink"><a class="nav-link" href="/profile">Profile</a></li>
+                    
+                    <li class="nav-item d-none" id="userNameDisplay">
+                        <span class="nav-link fw-bold" style="color: var(--accent-color) !important;"></span>
+                    </li>
+
+                    <li class="nav-item d-none" id="logoutBtn"><a class="nav-link text-danger" href="#">Logout</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <div class="container pt-5">
+
+    <script>
+        const themeBtn = document.getElementById('themeToggle');
+        
+        if(localStorage.getItem('theme') === 'dark') {
+            themeBtn.innerText = '☀️';
+            document.body.classList.add('dark-mode');
+        }
+
+        themeBtn.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            
+            if(document.body.classList.contains('dark-mode')) {
+                localStorage.setItem('theme', 'dark');
+                themeBtn.innerText = '☀️';
+            } else {
+                localStorage.setItem('theme', 'light');
+                themeBtn.innerText = '🌙';
+            }
+        });
+    </script>

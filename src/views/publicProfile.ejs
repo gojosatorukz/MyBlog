@@ -1,0 +1,88 @@
+<%- include('partials/header') %>
+
+<input type="hidden" id="targetUserId" value="<%= targetUserId %>">
+
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card shadow text-center p-4 border-0 bg-light">
+                <div class="card-body">
+                    <img id="profileAvatar" src="" class="rounded-circle mb-3 shadow-sm" width="120" height="120" style="object-fit: cover;">
+                    
+                    <h3 id="username" class="card-title fw-bold">Loading...</h3>
+                    <p id="role" class="badge bg-secondary">User</p>
+                    
+                    <div class="text-start bg-white p-3 rounded mt-3 shadow-sm">
+                        <small class="text-muted text-uppercase fw-bold">About</small>
+                        <p id="bio" class="mb-0 text-dark fst-italic mt-1">No bio yet.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <h3 class="mb-4 border-bottom pb-2"><span id="postsTitle">User</span>'s Posts</h3>
+            <div id="userPostsContainer" class="row">
+                <p class="text-center mt-5">Loading posts...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const targetUserId = document.getElementById('targetUserId').value;
+    const token = localStorage.getItem('token');
+
+    async function loadPublicProfile() {
+        if (!token) return window.location.href = '/login';
+
+        const userRes = await fetch(`/api/users/${targetUserId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!userRes.ok) {
+            document.body.innerHTML = "<h1 class='text-center mt-5'>User not found</h1>";
+            return;
+        }
+        
+        const user = await userRes.json();
+        
+        document.getElementById('username').innerText = user.username;
+        document.getElementById('postsTitle').innerText = user.username;
+        document.getElementById('role').innerText = user.role;
+        document.getElementById('bio').innerText = user.bio || "No bio provided.";
+
+        const avatarSrc = user.avatar ? user.avatar : `https://ui-avatars.com/api/?name=${user.username}&background=random&size=128`;
+        document.getElementById('profileAvatar').src = avatarSrc;
+
+        const postsRes = await fetch('/api/posts');
+        const posts = await postsRes.json();
+        const container = document.getElementById('userPostsContainer');
+        container.innerHTML = '';
+
+        const userPosts = posts.filter(p => p.author._id === targetUserId);
+
+        if (userPosts.length === 0) {
+            container.innerHTML = '<div class="alert alert-info w-100">This user has not posted anything yet.</div>';
+            return;
+        }
+
+        userPosts.forEach(post => {
+            container.innerHTML += `
+                <div class="col-12 mb-3">
+                    <div class="card h-100 shadow-sm hover-shadow">
+                        <div class="card-body">
+                            <h5 class="card-title fw-bold">${post.title}</h5>
+                            <p class="card-text text-muted">${post.content.substring(0, 120)}...</p>
+                            <a href="/post/${post._id}" class="btn btn-sm btn-primary">Read Post</a>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    loadPublicProfile();
+</script>
+
+<%- include('partials/footer') %>

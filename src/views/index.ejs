@@ -1,0 +1,117 @@
+<%- include('partials/header') %>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
+        <h1>Recent Posts</h1>
+        
+        <div class="d-flex gap-2">
+            <select id="categoryFilter" class="form-select w-auto" onchange="applyFilters()">
+                <option value="">All Categories</option>
+                </select>
+
+            <select id="sortFilter" class="form-select w-auto" onchange="applyFilters()">
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="popular">🔥 Most Popular</option>
+            </select>
+        </div>
+    </div>
+
+    <div id="postsContainer" class="row">
+        <div class="text-center w-100 mt-5" id="loading">Loading posts...</div>
+    </div>
+</div>
+
+<script>
+    async function loadCategories() {
+        try {
+            const res = await fetch('/api/categories');
+            const categories = await res.json();
+            const select = document.getElementById('categoryFilter');
+            
+            categories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat._id;
+                option.text = cat.name;
+                select.appendChild(option);
+            });
+        } catch (e) { console.error(e); }
+    }
+
+    async function loadPosts(category = '', sort = 'newest') {
+        const container = document.getElementById('postsContainer');
+        container.innerHTML = '<div class="text-center w-100 mt-5">Loading...</div>';
+
+        try {
+            const urlParams = new URLSearchParams(window.location.search);
+            const search = urlParams.get('search') || '';
+
+            let apiUrl = `/api/posts?search=${search}&sort=${sort}`;
+            if (category) apiUrl += `&category=${category}`;
+
+            const res = await fetch(apiUrl);
+            if (!res.ok) throw new Error('Failed to load');
+            
+            const posts = await res.json();
+            container.innerHTML = '';
+
+            if (posts.length === 0) {
+                container.innerHTML = '<p class="text-muted text-center w-100">No posts found.</p>';
+                return;
+            }
+
+            posts.forEach(post => {
+                const authorName = post.author ? post.author.username : 'Unknown';
+                const authorId = post.author ? post.author._id : '#';
+                const categoryName = post.category ? post.category.name : 'Uncategorized';
+                const views = post.views || 0;
+                
+                const html = `
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100 shadow-sm hover-shadow">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="badge bg-secondary">${categoryName}</span>
+                                    <small class="text-muted text-end">
+                                        By <a href="/user/${authorId}" class="text-decoration-none fw-bold text-dark">${authorName}</a>
+                                    </small>
+                                </div>
+                                
+                                <h5 class="card-title fw-bold">${post.title}</h5>
+                                <p class="card-text text-muted">${post.content.substring(0, 100)}...</p>
+                                
+                                <div class="d-flex justify-content-between align-items-center mt-3">
+                                    <a href="/post/${post._id}" class="btn btn-outline-primary btn-sm">Read More</a>
+                                    <small class="text-muted">👁️ ${views}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += html;
+            });
+        } catch (error) {
+            console.error(error);
+            container.innerHTML = '<p class="text-danger text-center">Error loading posts.</p>';
+        }
+    }
+
+    function applyFilters() {
+        const category = document.getElementById('categoryFilter').value;
+        const sort = document.getElementById('sortFilter').value;
+        loadPosts(category, sort);
+    }
+
+    loadCategories();
+    loadPosts();
+</script>
+
+<style>
+    .hover-shadow:hover { 
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; 
+        transition: 0.3s; 
+        transform: translateY(-2px);
+    }
+</style>
+
+<%- include('partials/footer') %>

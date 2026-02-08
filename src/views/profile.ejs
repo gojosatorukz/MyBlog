@@ -1,0 +1,168 @@
+<%- include('partials/header') %>
+
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card shadow text-center p-4">
+                <div class="card-body">
+                    <img id="profileAvatar" src="" class="rounded-circle mb-3 shadow-sm" width="120" height="120" style="object-fit: cover;">
+                    
+                    <h3 id="username" class="card-title fw-bold">Loading...</h3>
+                    <p id="role" class="badge bg-primary">User</p>
+                    
+                    <p class="text-muted mb-4" id="email"></p>
+                    
+                    <div class="text-start bg-light p-3 rounded mb-3">
+                        <small class="text-muted text-uppercase fw-bold">Bio</small>
+                        <p id="bio" class="mb-0 text-dark fst-italic">No bio yet.</p>
+                    </div>
+
+                    <button class="btn btn-outline-dark w-100" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+                        ✏️ Edit Profile
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <h3 class="mb-4 border-bottom pb-2">My Posts</h3>
+            <div id="myPostsContainer" class="row">
+                <p class="text-center mt-5">Loading your posts...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editProfileModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Profile</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editProfileForm">
+                    <div class="mb-3">
+                        <label class="form-label">Username</label>
+                        <input type="text" id="editUsername" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Avatar URL (Link to image)</label>
+                        <input type="text" id="editAvatar" class="form-control" placeholder="https://example.com/image.jpg">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Bio (About you)</label>
+                        <textarea id="editBio" class="form-control" rows="3"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Save Changes</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function loadProfileAndPosts() {
+        const token = localStorage.getItem('token');
+        if (!token) return window.location.href = '/login';
+
+        // 1. Грузим профиль
+        const userRes = await fetch('/api/users/profile', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!userRes.ok) return window.location.href = '/login';
+        
+        const user = await userRes.json();
+        
+        // Заполняем данные на странице
+        document.getElementById('username').innerText = user.username;
+        document.getElementById('email').innerText = user.email;
+        document.getElementById('role').innerText = user.role;
+        document.getElementById('bio').innerText = user.bio || "No bio yet.";
+
+        // Логика Аватарки: Если есть ссылка - берем её, если нет - генерируем буквы
+        const avatarSrc = user.avatar ? user.avatar : `https://ui-avatars.com/api/?name=${user.username}&background=random&size=128`;
+        document.getElementById('profileAvatar').src = avatarSrc;
+
+        // Заполняем поля в модальном окне (чтобы юзеру было удобно редактировать)
+        document.getElementById('editUsername').value = user.username;
+        document.getElementById('editAvatar').value = user.avatar || "";
+        document.getElementById('editBio').value = user.bio || "";
+
+        // 2. Грузим посты
+        loadMyPosts(user._id);
+    }
+
+    async function loadMyPosts(userId) {
+        const postsRes = await fetch('/api/posts');
+        const posts = await postsRes.json();
+        const container = document.getElementById('myPostsContainer');
+        container.innerHTML = '';
+
+        const myPosts = posts.filter(p => p.author._id === userId);
+
+        if (myPosts.length === 0) {
+            container.innerHTML = '<p class="text-muted text-center">You have no posts yet.</p>';
+            return;
+        }
+
+        myPosts.forEach(post => {
+            container.innerHTML += `
+                <div class="col-12 mb-3">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">${post.title}</h5>
+                            <p class="card-text text-muted">${post.content.substring(0, 100)}...</p>
+                            <div class="d-flex gap-2">
+                                <a href="/post/${post._id}" class="btn btn-sm btn-outline-primary">View</a>
+                                <button onclick="deleteMyPost('${post._id}')" class="btn btn-sm btn-outline-danger">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    // ЛОГИКА СОХРАНЕНИЯ ПРОФИЛЯ
+    document.getElementById('editProfileForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const token = localStorage.getItem('token');
+        
+        const username = document.getElementById('editUsername').value;
+        const bio = document.getElementById('editBio').value;
+        const avatar = document.getElementById('editAvatar').value;
+
+        const res = await fetch('/api/users/profile', {
+            method: 'PUT',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}` 
+            },
+            body: JSON.stringify({ username, bio, avatar })
+        });
+
+        if (res.ok) {
+            // Закрываем модалку и обновляем страницу
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editProfileModal'));
+            modal.hide();
+            loadProfileAndPosts(); 
+            alert('Profile updated!');
+        } else {
+            alert('Error updating profile');
+        }
+    });
+
+    // Удаление (оставил как было)
+    async function deleteMyPost(id) {
+        if(!confirm('Delete this post?')) return;
+        const token = localStorage.getItem('token');
+        const res = await fetch(`/api/posts/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+        if(res.ok) loadProfileAndPosts();
+    }
+
+    loadProfileAndPosts();
+</script>
+
+<%- include('partials/footer') %>

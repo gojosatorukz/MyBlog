@@ -1,0 +1,238 @@
+<%- include('partials/header') %>
+
+<div class="container mt-5">
+    <input type="hidden" id="postId" value="<%= postId %>">
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <article class="card shadow-sm mb-5 border-0">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <a id="avatarLink" href="#" class="text-decoration-none">
+                            <img id="authorAvatar" src="" class="rounded-circle me-3 border" width="50" height="50" style="object-fit: cover;">
+                        </a>
+                        <div>
+                            <h5 class="m-0 fw-bold" id="postAuthor">Loading...</h5>
+                            <small class="text-muted" id="postDate">Date</small>
+                        </div>
+
+                        <div class="ms-4 text-muted d-flex align-items-center bg-light px-2 py-1 rounded">
+                            <span class="me-2">👁️</span> 
+                            <span id="postViews" class="fw-bold">0</span>
+                        </div>
+
+                        <span id="postCategory" class="badge bg-primary ms-auto">Category</span>
+                    </div>
+
+                    <h1 id="postTitle" class="display-5 fw-bold mb-3">Loading...</h1>
+                    <p id="postContent" class="lead" style="white-space: pre-wrap;">Loading content...</p>
+                    
+                    <hr class="my-4">
+
+                    <div class="d-flex gap-2">
+                        <button id="likeBtn" class="btn btn-outline-danger rounded-pill px-4">
+                            ❤️ <span id="likeCount">0</span> Likes
+                        </button>
+                        <button id="deleteBtn" class="btn btn-outline-dark rounded-pill px-4 d-none" onclick="deletePost()">
+                            🗑 Delete Post
+                        </button>
+                    </div>
+                </div>
+            </article>
+
+            <div class="card shadow-sm border-0 bg-light">
+                <div class="card-body p-4">
+                    <h4 class="mb-4">Comments</h4>
+                    
+                    <form id="commentForm" class="mb-4">
+                        <div class="input-group">
+                            <input type="text" id="commentInput" class="form-control" placeholder="Write a comment..." required>
+                            <button class="btn btn-primary" type="submit">Post</button>
+                        </div>
+                    </form>
+
+                    <div id="commentsList">
+                        </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const postId = document.getElementById('postId').value;
+    const token = localStorage.getItem('token');
+    
+    let currentUserId = null;
+    let currentUserRole = null;
+
+    async function loadPost() {
+        if(token) {
+            try {
+                const meRes = await fetch('/api/users/profile', { headers: {'Authorization': `Bearer ${token}`} });
+                if(meRes.ok) {
+                    const me = await meRes.json();
+                    currentUserId = me._id;
+                    currentUserRole = me.role;
+                }
+            } catch (e) { console.error("Auth check failed", e); }
+        }
+
+        const res = await fetch(`/api/posts/${postId}`);
+        if(!res.ok) return document.body.innerHTML = "<h1 class='text-center mt-5'>Post not found</h1>";
+        
+        const data = await res.json();
+        const post = data.post;
+        
+        document.getElementById('postTitle').innerText = post.title;
+        document.getElementById('postContent').innerText = post.content;
+        document.getElementById('postViews').innerText = post.views; 
+        if (post.author) {
+            document.getElementById('postAuthor').innerHTML = `<a href="/user/${post.author._id}" class="text-dark text-decoration-none">${post.author.username}</a>`;
+            document.getElementById('avatarLink').href = `/user/${post.author._id}`;
+            const avatarSrc = post.author.avatar ? post.author.avatar : `https://ui-avatars.com/api/?name=${post.author.username}&background=random&color=fff`;
+            document.getElementById('authorAvatar').src = avatarSrc;
+        } else {
+            document.getElementById('postAuthor').innerText = "Unknown Author";
+        }
+
+        document.getElementById('postCategory').innerText = post.category ? post.category.name : 'General';
+        document.getElementById('likeCount').innerText = data.likeCount || 0;
+        
+        const isPostAuthor = post.author && post.author._id === currentUserId;
+        if (currentUserRole === 'admin' || isPostAuthor) {
+            document.getElementById('deleteBtn').classList.remove('d-none');
+        }
+
+        const commentsDiv = document.getElementById('commentsList');
+        commentsDiv.innerHTML = ''; 
+        
+        if (data.comments && data.comments.length > 0) {
+            data.comments.forEach(c => {
+                let authorHtml = '🚫 Deleted User';
+                let authorId = null;
+                
+                if (c.author) {
+                    authorHtml = `<a href="/user/${c.author._id}" class="text-decoration-none text-dark fw-bold">${c.author.username}</a>`;
+                    authorId = c.author._id;
+                }
+
+                const isCommentAuthor = authorId === currentUserId;
+                const canDelete = isCommentAuthor || isPostAuthor || currentUserRole === 'admin';
+                const isEdited = c.isEdited ? '<small class="text-muted fst-italic ms-2">(edited)</small>' : '';
+
+                let actionsHtml = '';
+                if (canDelete) {
+                    actionsHtml += `<button onclick="deleteComment('${c._id}')" class="btn btn-sm text-danger p-0 ms-2">Delete</button>`;
+                }
+                if (isCommentAuthor) {
+                    actionsHtml += `<button onclick="enableEdit('${c._id}', '${c.content}')" class="btn btn-sm text-primary p-0 ms-2">Edit</button>`;
+                }
+
+                const date = new Date(c.createdAt).toLocaleDateString();
+
+                commentsDiv.innerHTML += `
+                    <div class="card mb-2 border-0 bg-white shadow-sm" id="comment-card-${c._id}">
+                        <div class="card-body py-2">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    ${authorHtml} 
+                                    <small class="text-muted ms-2" style="font-size: 0.8em">${date}</small>
+                                    ${isEdited}
+                                </div>
+                                <div>${actionsHtml}</div>
+                            </div>
+                            
+                            <p class="mb-0 mt-1" id="comment-text-${c._id}">${c.content}</p>
+                            
+                            <div id="edit-form-${c._id}" class="d-none mt-2">
+                                <div class="input-group input-group-sm">
+                                    <input type="text" class="form-control" id="edit-input-${c._id}" value="${c.content}">
+                                    <button class="btn btn-success" onclick="saveEdit('${c._id}')">Save</button>
+                                    <button class="btn btn-secondary" onclick="cancelEdit('${c._id}')">Cancel</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        } else {
+            commentsDiv.innerHTML = '<p class="text-muted">No comments yet. Be the first!</p>';
+        }
+    }
+
+    async function deleteComment(commentId) {
+        if(!confirm('Delete this comment?')) return;
+        
+        const res = await fetch(`/api/posts/comment/${commentId}`, {
+            method: 'DELETE',
+            headers: {'Authorization': `Bearer ${token}`}
+        });
+        
+        if (res.ok) {
+            loadPost(); 
+        } else {
+            alert('Error deleting comment');
+        }
+    }
+
+    function enableEdit(commentId, currentContent) {
+        document.getElementById(`comment-text-${commentId}`).classList.add('d-none'); // Скрываем текст
+        document.getElementById(`edit-form-${commentId}`).classList.remove('d-none'); // Показываем форму
+    }
+
+    function cancelEdit(commentId) {
+        document.getElementById(`comment-text-${commentId}`).classList.remove('d-none');
+        document.getElementById(`edit-form-${commentId}`).classList.add('d-none');
+    }
+
+    async function saveEdit(commentId) {
+        const newContent = document.getElementById(`edit-input-${commentId}`).value;
+        
+        const res = await fetch(`/api/posts/comment/${commentId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ content: newContent })
+        });
+
+        if (res.ok) {
+            loadPost(); 
+        } else {
+            alert('Error updating comment');
+        }
+    }
+
+    document.getElementById('likeBtn').addEventListener('click', async () => {
+        if(!token) return alert('Login to like!');
+        const res = await fetch(`/api/posts/like/${postId}`, { method: 'PUT', headers: {'Authorization': `Bearer ${token}`} });
+        if (res.ok) loadPost();
+    });
+
+    document.getElementById('commentForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if(!token) return alert('Login to comment!');
+        const content = document.getElementById('commentInput').value;
+        const res = await fetch(`/api/posts/comment/${postId}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
+            body: JSON.stringify({ content })
+        });
+        if(res.ok) {
+            document.getElementById('commentInput').value = ''; 
+            loadPost(); 
+        }
+    });
+
+    async function deletePost() {
+        if(!confirm('Delete this post?')) return;
+        const res = await fetch(`/api/posts/${postId}`, { method: 'DELETE', headers: {'Authorization': `Bearer ${token}`} });
+        if(res.ok) window.location.href = '/';
+    }
+
+    loadPost();
+</script>
+
+<%- include('partials/footer') %>

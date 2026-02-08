@@ -1,0 +1,75 @@
+<%- include('partials/header') %>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4>Write a New Post</h4>
+            </div>
+            <div class="card-body">
+                <form id="postForm">
+                    <div class="mb-3">
+                        <label class="form-label">Title</label>
+                        <input type="text" id="title" class="form-control" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Category</label>
+                        <select id="category" class="form-select">
+                            <option value="">Select a category...</option>
+                            </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Content</label>
+                        <textarea id="content" class="form-control" rows="5" required></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Publish Post</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function loadCategories() {
+        const res = await fetch('/api/categories');
+        const categories = await res.json();
+        const select = document.getElementById('category');
+        
+        categories.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat._id;
+            option.text = cat.name;
+            select.appendChild(option);
+        });
+    }
+    loadCategories();
+
+    document.getElementById('postForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const title = document.getElementById('title').value;
+        const content = document.getElementById('content').value;
+        const category = document.getElementById('category').value || null; 
+        const token = localStorage.getItem('token');
+
+        const res = await fetch('/api/posts', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ title, content, category }) 
+        });
+
+        if (res.ok) {
+            window.location.href = '/';
+        } else {
+            alert('Error creating post');
+        }
+    });
+</script>
+
+<%- include('partials/footer') %>
